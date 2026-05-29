@@ -1,1 +1,879 @@
-<!-- placeholder -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lewis Health Plan">
+<link rel="apple-touch-icon" id="pwa-icon">
+<title>Lewis Household Health Plan</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<style>
+:root{
+  --r:#1a6b3a; --r-lt:#2d9b54; --r-bg:#edf7ef;
+  --s:#7b3fa0; --s-lt:#a259c8; --s-bg:#f5eeff;
+  --gold:#c8872a; --gold-bg:#fef9ee;
+  --sand:#f5efe6; --dark:#1a1a1a; --mid:#4a4a4a; --soft:#7a7a7a;
+  --card:#ffffff; --border:#e0d8cc;
+  --warn:#c0392b; --warn-bg:#fdf0ee;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--sand);color:var(--dark);line-height:1.6;}
+/* SETUP BANNER */
+#setup-banner{background:#1a1a2e;color:#fff;padding:0.75rem 1.2rem;font-size:0.8rem;display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap;}
+#setup-banner a{color:#a0d8ef;text-decoration:underline;}
+#setup-banner strong{color:#ffd166;}
+#setup-banner.hidden{display:none;}
+/* SYNC STATUS */
+.sync-status{display:inline-flex;align-items:center;gap:0.35rem;font-size:0.72rem;padding:0.2rem 0.6rem;border-radius:12px;margin-bottom:0.6rem;}
+.sync-ok{background:#edf7ef;color:var(--r);}
+.sync-err{background:var(--warn-bg);color:var(--warn);}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:currentColor;}
+/* HEADER */
+header{background:linear-gradient(135deg,var(--r) 0%,#0f4a28 50%,var(--s) 100%);color:white;padding:2rem 1.5rem 1.8rem;position:relative;overflow:hidden;}
+header::before{content:'';position:absolute;top:-50px;right:-50px;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,0.04);}
+header::after{content:'';position:absolute;bottom:-40px;left:25%;width:140px;height:140px;border-radius:50%;background:rgba(200,135,42,0.12);}
+header h1{font-family:'Playfair Display',serif;font-size:1.7rem;line-height:1.2;position:relative;z-index:1;}
+header p{font-size:0.82rem;opacity:0.8;margin-top:0.3rem;position:relative;z-index:1;}
+.name-pills{display:flex;gap:0.5rem;margin-top:0.9rem;position:relative;z-index:1;flex-wrap:wrap;}
+.npill{display:inline-flex;align-items:center;gap:0.4rem;padding:0.25rem 0.7rem;border-radius:20px;font-size:0.72rem;font-weight:500;}
+.npill-r{background:rgba(45,155,84,0.3);border:1px solid rgba(45,155,84,0.5);}
+.npill-s{background:rgba(162,89,200,0.3);border:1px solid rgba(162,89,200,0.5);}
+/* CONTAINER */
+.container{max-width:720px;margin:0 auto;padding:1.2rem 1rem;}
+/* ALERT */
+.alert{background:var(--warn-bg);border-left:4px solid var(--warn);border-radius:0 8px 8px 0;padding:0.9rem 1.1rem;margin-bottom:1.2rem;font-size:0.82rem;}
+.alert strong{color:var(--warn);}
+/* SECTION TITLE */
+.section-title{font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--dark);margin:1.8rem 0 0.9rem;padding-bottom:0.35rem;border-bottom:2px solid var(--border);}
+/* TAB NAV */
+.tab-nav{display:flex;border-bottom:2px solid var(--border);margin-bottom:1.2rem;overflow-x:auto;gap:0;}
+.tab-btn{padding:0.55rem 0.85rem;font-size:0.77rem;font-weight:500;border:none;background:none;color:var(--soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;white-space:nowrap;transition:all 0.15s;font-family:inherit;}
+.tab-btn.active{color:var(--r);border-bottom-color:var(--r);}
+.tab-pane{display:none;}
+.tab-pane.active{display:block;}
+/* CARDS */
+.card{background:var(--card);border-radius:12px;padding:1.1rem;margin-bottom:0.9rem;border:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,0.04);}
+.card h3{font-family:'Playfair Display',serif;font-size:0.95rem;color:var(--dark);margin-bottom:0.5rem;display:flex;align-items:center;gap:0.45rem;}
+.card h3 .ico{width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0;}
+.ico-r{background:var(--r);}
+.ico-s{background:var(--s);}
+.ico-both{background:var(--gold);}
+.card p,.card li{font-size:0.82rem;color:var(--mid);line-height:1.6;}
+.card ul{padding-left:1.15rem;}
+.card li{margin-bottom:0.28rem;}
+/* PERSON LABELS */
+.who{display:inline-block;font-size:0.65rem;font-weight:600;padding:0.1rem 0.45rem;border-radius:10px;margin-left:0.3rem;text-transform:uppercase;letter-spacing:0.04em;vertical-align:middle;}
+.who-r{background:var(--r-bg);color:var(--r);}
+.who-s{background:var(--s-bg);color:var(--s);}
+.who-both{background:var(--gold-bg);color:var(--gold);}
+/* MEAL PLAN */
+.pill-row{display:flex;gap:0.3rem;flex-wrap:wrap;margin-bottom:0.8rem;}
+.pill-btn{padding:0.28rem 0.65rem;border-radius:20px;font-size:0.73rem;cursor:pointer;border:1px solid var(--border);background:white;color:var(--mid);transition:all 0.15s;font-family:inherit;}
+.pill-btn.day-active{background:var(--r);color:white;border-color:var(--r);}
+.panel{display:none;}
+.panel.active{display:block;}
+.meal-block{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:0.7rem;overflow:hidden;}
+.meal-head{padding:0.5rem 1rem;font-size:0.73rem;font-weight:500;text-transform:uppercase;letter-spacing:0.06em;display:flex;justify-content:space-between;align-items:center;color:white;}
+.meal-head-shared{background:linear-gradient(90deg,var(--r),#1a5a8a);}
+.meal-body{padding:0.8rem 1rem;}
+.meal-row{display:flex;gap:0.5rem;margin-bottom:0.55rem;}
+.meal-row:last-child{margin-bottom:0;}
+.meal-person{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.6rem;font-weight:700;flex-shrink:0;margin-top:2px;color:white;}
+.mp-r{background:var(--r);}
+.mp-s{background:var(--s);}
+.mp-b{background:var(--gold);}
+.meal-text{font-size:0.8rem;color:var(--mid);line-height:1.5;}
+.meal-text strong{color:var(--dark);}
+.meal-note{font-size:0.73rem;color:var(--soft);margin-top:0.15rem;}
+/* GROCERY */
+.grocery-section{margin-bottom:1.2rem;}
+.grocery-section h3{font-size:0.82rem;font-weight:600;color:var(--dark);margin-bottom:0.5rem;display:flex;align-items:center;gap:0.4rem;}
+.grocery-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;}
+.g-item{display:flex;align-items:flex-start;gap:0.5rem;padding:0.4rem 0.6rem;background:var(--card);border-radius:7px;border:1px solid var(--border);cursor:pointer;transition:all 0.15s;}
+.g-item input[type=checkbox]{width:14px;height:14px;margin-top:2px;flex-shrink:0;cursor:pointer;accent-color:var(--r);}
+.g-item label{font-size:0.78rem;color:var(--mid);cursor:pointer;line-height:1.3;}
+.g-item label span{font-size:0.67rem;color:var(--soft);display:block;}
+.g-item.checked{background:#f0faf3;border-color:var(--r-lt);}
+.g-item.checked label{color:var(--soft);text-decoration:line-through;}
+.grocery-reset{font-size:0.73rem;color:var(--s);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:inherit;margin-bottom:0.8rem;}
+/* SUPPS */
+.supp-schedule{width:100%;border-collapse:collapse;font-size:0.78rem;margin-top:0.5rem;}
+.supp-schedule th{padding:0.4rem 0.6rem;text-align:left;font-weight:500;font-size:0.72rem;color:white;}
+.supp-schedule td{padding:0.4rem 0.6rem;border-bottom:1px solid var(--border);color:var(--mid);vertical-align:top;}
+.supp-schedule tr:last-child td{border-bottom:none;}
+.supp-schedule tr:nth-child(even) td{background:#fafaf8;}
+.th-r{background:var(--r);}
+.th-s{background:var(--s);}
+.th-b{background:var(--gold);}
+.time-cell{font-weight:500;color:var(--dark);white-space:nowrap;}
+.shared-note{background:var(--gold-bg);border:1px solid #f0d0a0;border-radius:8px;padding:0.8rem 1rem;font-size:0.79rem;color:var(--mid);margin-bottom:0.9rem;}
+.shared-note strong{color:var(--gold);}
+/* STRATEGY CARDS */
+.strat-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.7rem;margin-bottom:1rem;}
+.strat-card{border-radius:10px;padding:0.9rem;border:1px solid var(--border);}
+.strat-card-r{background:var(--r-bg);border-color:#a8d8b5;}
+.strat-card-s{background:var(--s-bg);border-color:#c9a8e0;}
+.strat-card h4{font-size:0.83rem;font-weight:600;margin-bottom:0.4rem;}
+.strat-card-r h4{color:var(--r);}
+.strat-card-s h4{color:var(--s);}
+.strat-card p,.strat-card li{font-size:0.76rem;color:var(--mid);}
+.strat-card ul{padding-left:1rem;}
+.strat-card li{margin-bottom:0.2rem;}
+.disclaimer{background:#f0f0f0;border-radius:8px;padding:0.9rem;font-size:0.73rem;color:var(--soft);margin-top:1.5rem;text-align:center;}
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP BANNER — remove once Firebase is configured ===== -->
+<div id="setup-banner">
+  <strong>⚙️ Firebase not configured.</strong>
+  Grocery sync is device-only until you add your config.
+  <a href="https://console.firebase.google.com" target="_blank">Set up Firebase →</a>
+  Then open this file and replace the REPLACE_WITH_* values in the script at the bottom.
+</div>
+
+<header>
+  <h1>Lewis Household<br>Health &amp; Nutrition Plan</h1>
+  <p>Combined · Caribbean-informed · Budget-friendly · April 2026</p>
+  <div class="name-pills">
+    <div class="npill npill-r">🟢 Rolando — Weight Gain + Muscle Build + Lab Management</div>
+    <div class="npill npill-s">🟣 Stephanie — Endometriosis + Scoliosis + Egg Quality (90-day)</div>
+  </div>
+</header>
+<div class="container">
+  <div class="alert">
+    <strong>⚠️ Medical Note for Both:</strong> Rolando — FIT positive &amp; Free T4 elevated require physician follow-up before starting. Stephanie — DHEA requires physician clearance first. All supplement regimens should be reviewed by a doctor, especially given Stephanie's multiple conditions.
+  </div>
+  <div class="tab-nav" id="mainNav">
+    <button class="tab-btn active" data-tab="strategy">🏠 Strategy</button>
+    <button class="tab-btn" data-tab="meals">🍽 Meal Plan</button>
+    <button class="tab-btn" data-tab="grocery">🛒 Grocery List</button>
+    <button class="tab-btn" data-tab="supps-r">🟢 Rolando Supps</button>
+    <button class="tab-btn" data-tab="supps-s">🟣 Stephanie Supps</button>
+  </div>
+  <!-- ===== STRATEGY ===== -->
+  <div id="tab-strategy" class="tab-pane active">
+    <h2 class="section-title">Household Kitchen Strategy</h2>
+    <div class="card">
+      <h3><span class="ico ico-both">🏠</span> The Golden Rule — One Pot, Two Portions</h3>
+      <p>Cook <strong>one base meal</strong> for both of you each day. Then each person adds their specific needs at the plate level. This eliminates double cooking, reduces cost, and keeps the household running efficiently. Almost everything on both plans overlaps — the difference is <em>quantity</em> (Rolando eats more) and <em>additions</em> (Stephanie adds seeds and specific supplements).</p>
+    </div>
+    <div class="strat-grid">
+      <div class="strat-card strat-card-r">
+        <h4>🟢 Rolando's Plate Rules</h4>
+        <ul>
+          <li>Larger portions of starchy carbs — breadfruit, dasheen, sweet potato</li>
+          <li>3 eggs where Stephanie has 2</li>
+          <li>Add peanut butter to snacks for calorie surplus</li>
+          <li>Coconut milk in oats and rice for extra kcal</li>
+          <li>Post-workout meal within 45 min of training</li>
+          <li>Total daily target: 2,500–2,800 kcal</li>
+        </ul>
+      </div>
+      <div class="strat-card strat-card-s">
+        <h4>🟣 Stephanie's Plate Rules</h4>
+        <ul>
+          <li>Smaller, balanced portions — not a surplus</li>
+          <li>Flaxseeds on oats, smoothies, and salads daily</li>
+          <li>Pumpkin seeds and walnuts as snacks</li>
+          <li>ALWAYS cook cruciferous veg — never raw</li>
+          <li>Cook with coconut oil or olive oil only</li>
+          <li>Finish dinner 2–3 hrs before bed</li>
+          <li>Sit upright 20 min after eating</li>
+        </ul>
+      </div>
+    </div>
+    <div class="card">
+      <h3><span class="ico ico-both">✅</span> Foods That Serve Both Goals Simultaneously</h3>
+      <ul>
+        <li><strong>Oily fish</strong> (snapper, mahi-mahi, tuna) <span class="who who-both">BOTH</span> — Omega-3 for Rolando's thyroid + anti-inflammatory for Stephanie's endometriosis</li>
+        <li><strong>Eggs</strong> <span class="who who-both">BOTH</span> — Protein for Rolando's muscle building + choline for Stephanie's egg quality</li>
+        <li><strong>Avocado</strong> <span class="who who-both">BOTH</span> — Calorie density for Rolando + healthy fats for Stephanie's hormone health</li>
+        <li><strong>Callalou</strong> <span class="who who-both">BOTH</span> — Iron and folate for both; always steam or sauté</li>
+        <li><strong>Sweet potato, dasheen, ground provisions</strong> <span class="who who-both">BOTH</span> — Complex carbs with steady glycaemic response</li>
+        <li><strong>Legumes</strong> (kidney beans, lentils, chickpeas, black-eyed peas) <span class="who who-both">BOTH</span> — Plant protein, fibre, hormone support</li>
+        <li><strong>Turmeric + ginger + garlic in all cooking</strong> <span class="who who-both">BOTH</span> — Anti-inflammatory base for both</li>
+        <li><strong>Coconut water</strong> <span class="who who-both">BOTH</span> — Hydration and electrolytes for both</li>
+        <li><strong>Pumpkin and okra</strong> <span class="who who-both">BOTH</span> — Blood sugar regulation and anti-inflammatory</li>
+        <li><strong>Brown rice</strong> <span class="who who-both">BOTH</span> — Stable carb base; Rolando gets larger portion</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="ico ico-both">⚠️</span> Key Differences to Manage at the Plate</h3>
+      <ul>
+        <li><strong>Peanut butter</strong> <span class="who who-r">Rolando</span> — Stephanie can have small amounts but not as a daily calorie booster</li>
+        <li><strong>Breadfruit (large portions)</strong> <span class="who who-r">Rolando</span> — Stephanie has smaller portions of starchy sides</li>
+        <li><strong>Flaxseeds (1 tbsp daily)</strong> <span class="who who-s">Stephanie</span> — Lignans support estrogen metabolism; add to her oats/smoothie</li>
+        <li><strong>Walnuts</strong> <span class="who who-s">Stephanie</span> — Plant omega-3 and hormone support; Rolando uses peanuts instead</li>
+        <li><strong>Pumpkin seeds daily</strong> <span class="who who-s">Stephanie</span> — Zinc for FSH production; Rolando uses sunflower seeds</li>
+        <li><strong>Fermented foods</strong> <span class="who who-s">Stephanie</span> — Gut microbiome supports estrogen clearance; kefir or natural yoghurt if available</li>
+        <li><strong>No gluten/dairy/sugar during period</strong> <span class="who who-s">Stephanie</span> — Strict protocol during menstrual phase; Rolando continues normally</li>
+        <li><strong>Moringa tea at bedtime</strong> <span class="who who-s">Stephanie</span> — Anti-inflammatory; Rolando has soursop or guava leaf tea</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="ico ico-both">🍳</span> Weekly Meal Prep Strategy (Sunday)</h3>
+      <ul>
+        <li><strong>Batch cook legumes:</strong> Cook a large pot of kidney beans or lentils — used across Mon–Wed for both</li>
+        <li><strong>Prep ground provisions:</strong> Boil/roast a tray of dasheen, sweet potato, breadfruit — store in fridge, reheat as needed</li>
+        <li><strong>Make oat energy balls:</strong> Oats + peanut butter + banana — Rolando's pre-workout snacks for the week</li>
+        <li><strong>Batch cook brown rice:</strong> One large pot serves 3–4 days</li>
+        <li><strong>Marinate fish/chicken:</strong> Use lime, garlic, turmeric, thyme — season in bulk, freeze portions</li>
+        <li><strong>Make herbal teas in bulk:</strong> Soursop, guava leaf, ginger — store in fridge as cold brew or reheat</li>
+        <li><strong>Stephanie:</strong> Prep flaxseeds in a jar — pre-measure weekly portions; soak chia if using</li>
+      </ul>
+    </div>
+  </div>
+  <!-- ===== MEAL PLAN ===== -->
+  <div id="tab-meals" class="tab-pane">
+    <h2 class="section-title">Combined Weekly Meal Plan</h2>
+    <p style="font-size:0.8rem;color:var(--mid);margin-bottom:0.9rem;">
+      <span class="who who-r">R</span> = Rolando's addition/portion &nbsp;
+      <span class="who who-s">S</span> = Stephanie's addition/portion &nbsp;
+      <span class="who who-both">Both</span> = shared exactly
+    </p>
+    <div class="pill-row" id="dayNav">
+      <button class="pill-btn day-active" data-day="mon">Mon</button>
+      <button class="pill-btn" data-day="tue">Tue</button>
+      <button class="pill-btn" data-day="wed">Wed</button>
+      <button class="pill-btn" data-day="thu">Thu</button>
+      <button class="pill-btn" data-day="fri">Fri</button>
+      <button class="pill-btn" data-day="sat">Sat</button>
+      <button class="pill-btn" data-day="sun">Sun</button>
+    </div>
+    <!-- MON -->
+    <div class="panel active" data-daypanel="mon">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast</span><span style="font-size:0.68rem;opacity:0.8;">7:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Oats base</strong> — cooked with ginger and cinnamon, sliced banana<div class="meal-note">Cook one pot together. Split before adding individual toppings.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Add coconut milk to his oats + 3 boiled eggs + avocado (½)<div class="meal-note">~550–600 kcal. Calorie-dense version.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Add 1 tbsp flaxseeds + 2 boiled eggs + small avocado portion<div class="meal-note">Anti-inflammatory + hormone support. Collagen powder stirred in.</div></div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌿 Mid-Morning</span><span style="font-size:0.68rem;opacity:0.8;">10:30 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">2 crackers + peanut butter + coconut water</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Peppermint or fennel tea + small handful pumpkin seeds + papaya</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Lunch</span><span style="font-size:0.68rem;opacity:0.8;">1:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Stewed kidney beans + callalou + avocado</strong><div class="meal-note">One pot. Season with garlic, onion, thyme. No salt meat.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large portion dasheen on the side + extra avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller dasheen portion + digestive enzyme + Boswellia with this meal</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon Snack</span><span style="font-size:0.68rem;opacity:0.8;">4:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Peanuts + guava + coconut water</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Fresh papaya + walnuts + sorrel tea or coconut water</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner</span><span style="font-size:0.68rem;opacity:0.8;">6:30–7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Grilled snapper + steamed pumpkin + sautéed callalou with garlic &amp; turmeric</strong><div class="meal-note">Cook fish together. Vegetables one pot. Turmeric and ginger in everything.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Larger fish fillet + roasted breadfruit on the side</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller portion + finish dinner by 8 PM, sit upright 20 min after</div></div>
+      </div></div>
+    </div>
+    <!-- TUE -->
+    <div class="panel" data-daypanel="tue">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast — Rolando Training Day</span><span style="font-size:0.68rem;opacity:0.8;">7:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Eggs + sautéed callalou + avocado</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">3 eggs + roasted sweet potato + larger avocado portion<div class="meal-note">Training day. Big fuel breakfast.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">2 eggs + callalou + small sweet potato + 1 tbsp flaxseeds<div class="meal-note">Collagen powder in warm water alongside.</div></div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌿 Mid-Morning</span><span style="font-size:0.68rem;opacity:0.8;">10:30 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Banana + peanut butter (pre-workout fuel)</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Herbal tea + short gentle walk 15–20 min</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Lunch</span><span style="font-size:0.68rem;opacity:0.8;">1:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Baked chicken (thigh for R, breast for S) + brown rice + steamed okra</strong><div class="meal-note">Roast a tray of chicken together. Brown rice one pot. Season with garlic, turmeric, herbs.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Larger rice + coconut milk gravy + extra chicken — within 45 min post-workout</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller rice + NAC + turmeric capsule + digestive enzyme with this meal</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon Snack</span><span style="font-size:0.68rem;opacity:0.8;">4:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">2 boiled eggs + sliced avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Pineapple or mango + walnuts + CoQ10/ALA/Myo-Inositol taken now</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner</span><span style="font-size:0.68rem;opacity:0.8;">6:30–7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Thick lentil &amp; pumpkin soup + callalou</strong><div class="meal-note">One large pot. Add garlic, ginger, turmeric, thyme. Make it thick enough to be a full meal.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">2 slices wholegrain bread alongside + extra bowl portion</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller portion + peppermint tea after + 10 min gentle evening walk</div></div>
+      </div></div>
+    </div>
+    <!-- WED -->
+    <div class="panel" data-daypanel="wed">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast — Walk Day (Both)</span><span style="font-size:0.68rem;opacity:0.8;">7:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Cornmeal porridge with cinnamon and ginger</strong><div class="meal-note">Cook one pot. Split into bowls before adding toppings.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Coconut milk in his portion + 3 boiled eggs on side + avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Small honey + 2 eggs on side + 1 tbsp flaxseeds stirred in<div class="meal-note">Collagen in warm water. Morning supplements with breakfast.</div></div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌿 Mid-Morning</span><span style="font-size:0.68rem;opacity:0.8;">10:30 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text">20–30 min walk together if schedules allow<div class="meal-note">Good joint activity — Rolando's active rest day, Stephanie's gentle movement.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Coconut water + sunflower seeds + 2 crackers (post-walk)</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Fennel tea + pumpkin seeds (post-walk)</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Lunch</span><span style="font-size:0.68rem;opacity:0.8;">1:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Tuna (canned) + steamed okra + avocado</strong><div class="meal-note">Season tuna with onion, lime, celery, pepper. No mayo.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large roasted breadfruit + extra avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Brown rice (small) + digestive enzyme + Boswellia + NAC</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon Snack</span><span style="font-size:0.68rem;opacity:0.8;">4:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Papaya + boiled egg + peanut butter crackers</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Papaya + small walnuts + CoQ10/ALA/Vit E/Myo-Inositol taken now</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner</span><span style="font-size:0.68rem;opacity:0.8;">6:30–7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Chicken stew (no skin) + cooked vegetables with garlic, onion, turmeric</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large boiled green banana + extra chicken + avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Small dasheen + chamomile tea after + evening stretch routine</div></div>
+      </div></div>
+    </div>
+    <!-- THU -->
+    <div class="panel" data-daypanel="thu">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast — Rolando Training Day</span><span style="font-size:0.68rem;opacity:0.8;">7:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Eggs + sautéed callalou + avocado</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">3 eggs + sweet potato hash + large avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">2 eggs + callalou + small sweet potato + flaxseeds</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌿 Mid-Morning</span><span style="font-size:0.68rem;opacity:0.8;">10:30 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Oat energy balls + banana (pre-workout)</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Peppermint tea + gentle yoga 20 min if energy allows</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Lunch — Post-Workout for Rolando</span><span style="font-size:0.68rem;opacity:0.8;">1:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Grilled fish + black-eyed peas + callalou + pumpkin</strong><div class="meal-note">One of the most nutrient-dense combinations for both plans.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large fish fillet + brown rice + extra avocado — within 45 min post-training</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller portion + NAC + turmeric + digestive enzyme + Boswellia + MSM</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon Snack</span><span style="font-size:0.68rem;opacity:0.8;">4:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Peanuts + guava</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Pineapple + pumpkin seeds + sorrel tea + CoQ10/ALA/Myo-Inositol</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner</span><span style="font-size:0.68rem;opacity:0.8;">6:30–7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Split pea soup (thick) + sautéed eggplant with garlic and herbs</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large soup bowl + 2 slices wholegrain bread + avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller bowl + chamomile or peppermint tea + castor oil pack after</div></div>
+      </div></div>
+    </div>
+    <!-- FRI -->
+    <div class="panel" data-daypanel="fri">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast — Walk Day (Both)</span><span style="font-size:0.68rem;opacity:0.8;">7:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Smoothie base: banana + papaya + ginger + turmeric + coconut water</strong><div class="meal-note">Blend together. Split. Each person adds their extras below.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Add oats + peanut butter to his. 2 boiled eggs on side.</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Add 1 tbsp flaxseeds + collagen powder to hers. Smaller portion.</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌿 Mid-Morning</span><span style="font-size:0.68rem;opacity:0.8;">10:30 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Avocado crackers + coconut water</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Herbal tea + swimming or gentle walk 20–30 min</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Lunch — Pre-load for Saturday training</span><span style="font-size:0.68rem;opacity:0.8;">1:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Baked chicken + steamed okra + avocado</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large roasted breadfruit + extra chicken — carb loading for Saturday</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Brown rice (small) + lentils + supplements with meal</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon Snack</span><span style="font-size:0.68rem;opacity:0.8;">4:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">2 boiled eggs + papaya</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Local seasonal fruit + walnuts + CoQ10/ALA/Myo-Inositol + Vit E</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner</span><span style="font-size:0.68rem;opacity:0.8;">6:30–7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Grilled fish + sweet potato + steamed callalou with garlic</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Larger fish + larger sweet potato + avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller balanced plate + evening stretch routine after</div></div>
+      </div></div>
+    </div>
+    <!-- SAT -->
+    <div class="panel" data-daypanel="sat">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast — Rolando Full Body Training</span><span style="font-size:0.68rem;opacity:0.8;">7:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Oats with ginger, cinnamon + eggs + avocado</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Coconut milk oats + 3 scrambled eggs + full avocado + pineapple<div class="meal-note">Biggest breakfast of the week for Rolando.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Regular oats + 2 eggs + flaxseeds + small avocado. Stephanie's active day too — yoga or swim.</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Lunch — Post-Workout for Rolando</span><span style="font-size:0.68rem;opacity:0.8;">12:30 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Pelau: chicken + pigeon peas + coconut milk + herbs</strong><div class="meal-note">One pot Caribbean classic. Cook together. The coconut milk benefits both.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Large portion + extra callalou + avocado — within 45 min post-training</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Smaller portion + supplements with meal + gentle rest after</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon Snack</span><span style="font-size:0.68rem;opacity:0.8;">4:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Coconut water + peanuts + guava</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Sorrel tea + walnuts + pumpkin seeds + Epsom salt bath option</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner</span><span style="font-size:0.68rem;opacity:0.8;">6:30–7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Baked fish + roasted vegetables (pumpkin, eggplant, okra) with olive oil + herbs</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Larger fish fillet + sweet potato + avocado</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Balanced plate + chamomile tea + castor oil pack option + legs up the wall</div></div>
+      </div></div>
+    </div>
+    <!-- SUN -->
+    <div class="panel" data-daypanel="sun">
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>☀️ Breakfast — Sunday Sabbath Rest</span><span style="font-size:0.68rem;opacity:0.8;">8:00 AM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Eggs (any style) + dasheen boil + avocado</strong><div class="meal-note">Sunday pace. No rush. Cook together and enjoy it.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">3 eggs + larger dasheen portion + soursop leaf tea</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">2 eggs + flaxseeds + ginger &amp; turmeric warm water first thing. Morning stretch sequence before eating.</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🍽 Sunday Lunch — Main Meal Together</span><span style="font-size:0.68rem;opacity:0.8;">1:30 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Roast chicken (skinless) + rice and peas (coconut milk) + steamed callalou + sweet potato</strong><div class="meal-note">Sunday tradition. One table. Both eat well. Remove skin from chicken. Cook everything together.</div></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Larger rice + chicken portion + avocado + extra sweet potato</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Balanced plate. Small macaroni if she wants it. No heavy gravy. Sit upright 20 min after.</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌅 Afternoon</span><span style="font-size:0.68rem;opacity:0.8;">4:30 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text">Sunday meal prep time — batch cook legumes, provisions, marinate proteins for the week</div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Soursop punch + peanuts while prepping</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Fruit bowl + walnuts + monthly symptom check-in</div></div>
+      </div></div>
+      <div class="meal-block"><div class="meal-head meal-head-shared"><span>🌙 Dinner — Light Sunday</span><span style="font-size:0.68rem;opacity:0.8;">7:00 PM</span></div><div class="meal-body">
+        <div class="meal-row"><div class="meal-person mp-b">B</div><div class="meal-text"><strong>Vegetable soup + wholegrain crackers</strong></div></div>
+        <div class="meal-row"><div class="meal-person mp-r">R</div><div class="meal-text">Larger soup + peanut butter on crackers + boiled egg</div></div>
+        <div class="meal-row"><div class="meal-person mp-s">S</div><div class="meal-text">Lighter bowl + moringa tea before bed + legs up the wall + evening supplements</div></div>
+      </div></div>
+    </div>
+  </div>
+  <!-- ===== GROCERY LIST ===== -->
+  <div id="tab-grocery" class="tab-pane">
+    <h2 class="section-title">Weekly Grocery List</h2>
+    <p style="font-size:0.8rem;color:var(--mid);margin-bottom:0.3rem;">Tap items to check them off as you shop. Changes sync instantly across all your devices.</p>
+    <div id="sync-status" class="sync-status sync-err"><span class="sync-dot"></span> Offline / not syncing</div>
+    <button class="grocery-reset" id="resetBtn">↺ Reset all</button>
+    <div class="grocery-section">
+      <h3>🐟 Proteins</h3>
+      <div class="grocery-grid" id="g-proteins">
+        <div class="g-item"><input type="checkbox" id="g1"><label for="g1">Eggs (2–3 dozen)<span>Both use 2–3 eggs daily each</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g2"><label for="g2">Fresh fish — snapper, mahi-mahi<span>3–4 servings each, per week</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g3"><label for="g3">Canned tuna (4–6 cans)<span>Budget lunch protein for both</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g4"><label for="g4">Chicken (breast + thighs)<span>Rolando: thighs for calories; Stephanie: breast</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🌾 Legumes &amp; Grains</h3>
+      <div class="grocery-grid" id="g-grains">
+        <div class="g-item"><input type="checkbox" id="g5"><label for="g5">Red kidney beans (dried or canned)<span>3–4 uses per week</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g6"><label for="g6">Lentils (brown or red)<span>Soups, stews — 3x week</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g7"><label for="g7">Black-eyed peas<span>Lunch base for both</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g8"><label for="g8">Pigeon peas (for pelau)<span>Saturday pelau dish</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g9"><label for="g9">Chickpeas<span>Curry, soups</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g10"><label for="g10">Split peas<span>Thick soup — Thu dinner</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g11"><label for="g11">Brown rice (large bag)<span>Daily base carb — batch cook Sunday</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g12"><label for="g12">Rolled oats (large bag)<span>Both eat oats daily</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g13"><label for="g13">Cornmeal<span>Porridge — alternate breakfasts</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g14"><label for="g14">Wholegrain bread / crackers<span>Rolando's snacks + sides</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g15"><label for="g15">Cream crackers<span>Rolando's snack base</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🍠 Ground Provisions &amp; Starchy Veg</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="g16"><label for="g16">Breadfruit<span>Rolando priority — large portions</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g17"><label for="g17">Dasheen<span>Both — batch boil Sunday</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g18"><label for="g18">Sweet potato (large quantity)<span>Both eat multiple times per week</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g19"><label for="g19">Green banana<span>Boiled sides — multiple times</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g20"><label for="g20">Yam (if available)<span>Stephanie's plan includes this</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🥬 Vegetables</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="g21"><label for="g21">Callalou (large bunch or bag)<span>Both eat daily — most important vegetable</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g22"><label for="g22">Pumpkin<span>Soups, steamed — multiple times</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g23"><label for="g23">Okra<span>Blood sugar regulation — both benefit</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g24"><label for="g24">Eggplant<span>Roasted or sautéed</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g25"><label for="g25">Carrots<span>Soups and stews</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g26"><label for="g26">Onions (large bag)<span>Daily cooking base</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g27"><label for="g27">Garlic (large head)<span>Daily anti-inflammatory base</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g28"><label for="g28">Seasoning peppers / chives<span>Daily flavour base</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🍓 Berries — Stephanie Priority, Both Benefit</h3>
+      <p style="font-size:0.75rem;color:var(--s);margin-bottom:0.5rem;">Berries are the single most important fruit category for Stephanie's egg quality and endometriosis management — exceptionally high antioxidants directly protect eggs and reduce inflammatory load. These are available in Antiguan supermarkets.</p>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="gf1"><label for="gf1">Blueberries (fresh or frozen)<span>🟣 Stephanie priority — highest antioxidant berry. Anti-inflammatory, gut-friendly, protects egg DNA. Add to oats, smoothies daily.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf2"><label for="gf2">Strawberries<span>🟣🟢 Both — high vitamin C, anti-inflammatory. Rolando: good calorie-light snack. Stephanie: hormone support and antioxidant load.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf3"><label for="gf3">Raspberries (fresh or frozen)<span>🟣 Stephanie — very high fibre helps clear excess estrogen. Blend into smoothies or eat with walnuts.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf4"><label for="gf4">Blackberries (if available)<span>🟣🟢 Both — among the highest antioxidant fruits. Anti-inflammatory for endometriosis and thyroid.</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🍊 Citrus Fruits</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="gf5"><label for="gf5">Oranges<span>🟣🟢 Both — vitamin C boosts immune system, supports iron absorption (important for Stephanie), antioxidant. Great snack for both.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf6"><label for="gf6">Lime / lemon (bag)<span>🟣🟢 Both — daily. Fish seasoning, morning warm water, anti-inflammatory.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf7"><label for="gf7">Grapefruit (if tolerated)<span>🟢 Rolando — vitamin C, good for liver function. Note: can interact with some medications — check if Stephanie is on any.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf8"><label for="gf8">Tangerines / mandarins<span>🟣🟢 Both — easy peel snack, vitamin C, great for Stephanie's afternoon snack rotation.</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🍎 Imported Tree Fruits</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="gf9"><label for="gf9">Apples (red or green)<span>🟣🟢 Both — quercetin reduces inflammation. High fibre helps clear estrogen from the gut (Stephanie) and stabilises blood sugar (Rolando's GTT).</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf10"><label for="gf10">Grapes (red or purple)<span>🟣🟢 Both — resveratrol in red grapes is anti-inflammatory and supports hormone balance. Rolando: add to calorie snacks. Keep portions moderate — natural sugar.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf11"><label for="gf11">Pears<span>🟣🟢 Both — high soluble fibre, gentle on digestion, good blood sugar response. Excellent for Stephanie's endo belly days.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf12"><label for="gf12">Pomegranate (fruit or seeds)<span>🟣 Stephanie priority — punicalagins are among the most potent anti-inflammatory compounds for endometriosis. Worth the cost. Add to salads or eat as snack.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf13"><label for="gf13">Plums / prunes<span>🟣🟢 Both — sorbitol in prunes supports bowel regularity (critical for Rolando's FIT result). Anti-inflammatory for Stephanie.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf14"><label for="gf14">Peaches or nectarines (when available)<span>🟣🟢 Both — anti-inflammatory flavonoids, supports skin and hormonal health.</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🍌 Local &amp; Caribbean Fruits</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="g29"><label for="g29">Bananas (bunch)<span>🟣🟢 Both — smoothies, snacks, Rolando's pre-workout fuel</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g30"><label for="g30">Papaya (2–3)<span>🟣🟢 Both — digestive enzymes, anti-inflammatory, gut health</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g31"><label for="g31">Guava<span>🟣🟢 Both — very high vitamin C, fibre, antioxidants</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g32"><label for="g32">Mango (seasonal)<span>🟣🟢 Both — vitamin A and C. Keep portions moderate for blood sugar.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g33"><label for="g33">Pineapple<span>🟣🟢 Both — bromelain reduces inflammation and aids digestion</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g34"><label for="g34">Soursop (if available)<span>🟢🟣 Both — anti-inflammatory, immune support</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g35"><label for="g35">Watermelon (seasonal)<span>🟣🟢 Both — lycopene is anti-inflammatory. High water content — good for Rolando's kidney hydration needs.</span></label></div>
+        <div class="g-item"><input type="checkbox" id="gf15"><label for="gf15">Passion fruit<span>🟣 Stephanie — antioxidants, calming effect, magnesium content supports sleep</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🥑 Healthy Fats, Seeds &amp; Nuts</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="g36"><label for="g36">Avocado (6–8 per week)<span>Both eat daily — most important fat source</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g37"><label for="g37">Peanut butter (large jar)<span>Rolando — calorie booster daily</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g38"><label for="g38">Peanuts (bag)<span>Rolando — daily snacking</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g39"><label for="g39">Walnuts<span>Stephanie — hormone support, omega-3</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g40"><label for="g40">Pumpkin seeds<span>Stephanie — zinc, FSH support</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g41"><label for="g41">Flaxseeds (ground or whole)<span>Stephanie — 1 tbsp daily, estrogen metabolism</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g42"><label for="g42">Sunflower seeds<span>Both — selenium for thyroid/endometriosis</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g43"><label for="g43">Coconut milk (canned, 4–6 cans)<span>Both — rice, oats, stews</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g44"><label for="g44">Coconut oil<span>Stephanie's cooking oil — both benefit</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g45"><label for="g45">Olive oil<span>Stephanie specified; both can use</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🫚 Herbs, Spices &amp; Teas</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="g46"><label for="g46">Fresh ginger (large piece)<span>Both use daily — anti-inflammatory</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g47"><label for="g47">Turmeric powder<span>Daily in cooking for both</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g48"><label for="g48">Cinnamon<span>Both — blood sugar regulation</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g49"><label for="g49">Thyme (fresh or dried)<span>Daily seasoning base</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g50"><label for="g50">Black pepper<span>Activates turmeric curcumin</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g51"><label for="g51">Cumin<span>Chickpea curry, stews</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g52"><label for="g52">Soursop or guava leaf tea<span>Rolando's evening tea</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g53"><label for="g53">Peppermint tea bags<span>Stephanie — digestion, endo belly</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g54"><label for="g54">Fennel seed tea<span>Stephanie — digestion</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g55"><label for="g55">Chamomile tea bags<span>Stephanie — sleep and pain relief</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g56"><label for="g56">Moringa powder or tea<span>Stephanie — bedtime routine</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g57"><label for="g57">Sorrel (dried, for tea)<span>Stephanie's afternoon drink</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🥤 Drinks &amp; Other</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="g58"><label for="g58">Coconut water (fresh or packed)<span>Both — daily hydration + electrolytes</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g59"><label for="g59">Natural honey (small jar)<span>Stephanie's porridge; minimal use</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g60"><label for="g60">Collagen powder<span>Stephanie — morning routine</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g61"><label for="g61">Epsom salts (large bag)<span>Stephanie — bath 3–4x/week</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g62"><label for="g62">Castor oil<span>Stephanie — abdominal pack 3–4x/week</span></label></div>
+        <div class="g-item"><input type="checkbox" id="g63"><label for="g63">Psyllium husk<span>Rolando — bowel health (FIT positive)</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>💊 Shared Supplements (Buy Together — Save Money)</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="s1"><label for="s1">Omega-3 fish oil (EPA/DHA)<span>Both take — buy one large bottle</span></label></div>
+        <div class="g-item"><input type="checkbox" id="s2"><label for="s2">Magnesium glycinate<span>Both take — buy one large bottle</span></label></div>
+        <div class="g-item"><input type="checkbox" id="s3"><label for="s3">Zinc (15–25mg)<span>Both take — buy one bottle to share</span></label></div>
+        <div class="g-item"><input type="checkbox" id="s4"><label for="s4">Vitamin D3 + K2<span>Both take — buy one bottle</span></label></div>
+        <div class="g-item"><input type="checkbox" id="s5"><label for="s5">Turmeric/Curcumin + black pepper<span>Both benefit; Stephanie also takes as capsule</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🟢 Rolando Only — Supplements</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="sr1"><label for="sr1">Cranberry tablets (36mg PAC)<span>Urinary health — urgent</span></label></div>
+        <div class="g-item"><input type="checkbox" id="sr2"><label for="sr2">Psyllium husk (already listed in food section)</label></div>
+        <div class="g-item"><input type="checkbox" id="sr3"><label for="sr3">Whey isolate protein powder (optional)<span>Post-workout — no mass gainers</span></label></div>
+      </div>
+    </div>
+    <div class="grocery-section">
+      <h3>🟣 Stephanie Only — Supplements</h3>
+      <div class="grocery-grid">
+        <div class="g-item"><input type="checkbox" id="ss1"><label for="ss1">Vitamin B12</label></div>
+        <div class="g-item"><input type="checkbox" id="ss2"><label for="ss2">B-complex</label></div>
+        <div class="g-item"><input type="checkbox" id="ss3"><label for="ss3">Biotin</label></div>
+        <div class="g-item"><input type="checkbox" id="ss4"><label for="ss4">Evening primrose oil</label></div>
+        <div class="g-item"><input type="checkbox" id="ss5"><label for="ss5">Ashwagandha</label></div>
+        <div class="g-item"><input type="checkbox" id="ss6"><label for="ss6">Chasteberry / Vitex<span>Same time every evening</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss7"><label for="ss7">Vitamin E (400–800 IU)</label></div>
+        <div class="g-item"><input type="checkbox" id="ss8"><label for="ss8">COQ10 Ubiquinol (400–600mg)</label></div>
+        <div class="g-item"><input type="checkbox" id="ss9"><label for="ss9">Alpha Lipoic Acid (300–600mg)</label></div>
+        <div class="g-item"><input type="checkbox" id="ss10"><label for="ss10">NAC — N-Acetylcysteine (600mg)<span>Cycle: 3 days on, 4 days off per research</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss11"><label for="ss11">Myo-Inositol (2,000–4,000mg)</label></div>
+        <div class="g-item"><input type="checkbox" id="ss12"><label for="ss12">Glucosamine &amp; Chondroitin<span>Joints — scoliosis, sciatica, arthritis</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss13"><label for="ss13">Collagen powder<span>Morning routine — stir into drink</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss14"><label for="ss14">Digestive enzyme<span>With lunch</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss15"><label for="ss15">Boswellia<span>Anti-inflammatory for joints + endo</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss16"><label for="ss16">MSM<span>Joint support</span></label></div>
+        <div class="g-item"><input type="checkbox" id="ss17"><label for="ss17">Melatonin (3mg)</label></div>
+        <div class="g-item"><input type="checkbox" id="ss18"><label for="ss18">DHEA (25–75mg) — physician clearance first<span>Month 3 of egg quality plan</span></label></div>
+      </div>
+    </div>
+  </div>
+  <!-- ===== ROLANDO SUPPS ===== -->
+  <div id="tab-supps-r" class="tab-pane">
+    <h2 class="section-title">🟢 Rolando — Daily Supplement Schedule</h2>
+    <div class="shared-note"><strong>💡 Shared purchases with Stephanie:</strong> Omega-3, Magnesium glycinate, Zinc, Vitamin D3+K2, Turmeric capsules. Buy one bottle each — both use the same product.</div>
+    <div class="card">
+      <table class="supp-schedule">
+        <tr><th class="th-r">Time</th><th class="th-r">Supplement</th><th class="th-r">Notes</th></tr>
+        <tr><td class="time-cell">Morning (waking)</td><td>Cranberry tablets (36mg PAC)</td><td>With large glass of water. Urinary health — urgent given positive FIT.</td></tr>
+        <tr><td class="time-cell">Morning (waking)</td><td>Psyllium husk (1 tsp)</td><td>In 500ml water before food. Build up from ½ tsp to avoid bloating.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Vitamin D3 (2,000 IU) + K2 (100mcg)</td><td>With food — fat-soluble. Take with egg or avocado.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Zinc (15–25mg)</td><td>Always with food — causes nausea on empty stomach.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>Omega-3 fish oil (1–2g EPA/DHA)</td><td>With a fat-containing meal for best absorption. Reduces aftertaste.</td></tr>
+        <tr><td class="time-cell">Before bed</td><td>Magnesium glycinate (200–400mg)</td><td>Improves sleep quality within compressed 10 PM–1 AM schedule.</td></tr>
+        <tr><td class="time-cell">Post-workout only</td><td>Whey isolate protein (25g)</td><td>Within 45 min of training (Tue/Thu/Sat). Blend with banana + coconut water.</td></tr>
+        <tr><td class="time-cell" style="color:var(--gold);">HOLD</td><td>Creatine monohydrate (3–5g)</td><td>Await physician clearance. Creatinine at upper range + urinary findings. Start after kidney/urine recheck.</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3><span class="ico ico-r">⚠️</span> Rolando — What to Avoid</h3>
+      <ul>
+        <li><strong>Iodine supplements</strong> — Free T4 already elevated; extra iodine could worsen it</li>
+        <li><strong>Stimulant pre-workouts</strong> — Caffeine aggravates elevated T4</li>
+        <li><strong>Mass gainers</strong> — High maltodextrin spikes glucose above your 128 GTT result</li>
+        <li><strong>High-dose calcium</strong> — Serum calcium already at upper normal (10.4); don't push it higher</li>
+        <li><strong>Testosterone boosters</strong> — Unregulated and often contain thyroid-active herbs</li>
+      </ul>
+    </div>
+  </div>
+  <!-- ===== STEPHANIE SUPPS ===== -->
+  <div id="tab-supps-s" class="tab-pane">
+    <h2 class="section-title">🟣 Stephanie — Daily Supplement Schedule</h2>
+    <div class="shared-note"><strong>💡 Shared with Rolando:</strong> Omega-3, Magnesium glycinate, Zinc, Vitamin D3+K2. Buy one bottle each — both use the same product. Save money by purchasing together.</div>
+    <div class="card">
+      <table class="supp-schedule">
+        <tr><th class="th-s">Time</th><th class="th-s">Supplement</th><th class="th-s">Notes</th></tr>
+        <tr><td class="time-cell">On waking</td><td>Warm water with ginger + turmeric pinch</td><td>Before getting out of bed. Then morning stretch sequence (10 min).</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Vitamin D3 (2,000 IU) + K2</td><td>Shared with Rolando — same product.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>B-complex</td><td>Take with food.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Vitamin B12</td><td>Can take sublingual form for better absorption.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Zinc (15–25mg)</td><td>Shared with Rolando. With food only.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Glucosamine &amp; Chondroitin</td><td>Joint health — scoliosis, sciatica, arthritis.</td></tr>
+        <tr><td class="time-cell">With breakfast</td><td>Collagen powder</td><td>Stir into smoothie or warm drink alongside breakfast.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>Omega-3 fish oil (2,000–4,000mg)</td><td>Shared with Rolando. With a fat-containing meal.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>Turmeric/Curcumin + black pepper</td><td>Take with a meal that has fat for absorption.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>NAC (600mg)</td><td>Cycle: 3 days on, 4 days off — do NOT take on period days. Long-term use can deplete zinc and selenium; monitor.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>Digestive enzyme</td><td>Immediately before or with meal for endo belly.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>Boswellia</td><td>Anti-inflammatory for joints and endometriosis.</td></tr>
+        <tr><td class="time-cell">With lunch</td><td>MSM</td><td>Joint support — take with food.</td></tr>
+        <tr><td class="time-cell">Afternoon</td><td>CoQ10 Ubiquinol (400–600mg)</td><td>Critical for egg quality 90-day protocol. Ubiquinol form only.</td></tr>
+        <tr><td class="time-cell">Afternoon</td><td>Myo-Inositol (2,000–4,000mg)</td><td>Egg quality and hormone balance. Can split dose: half morning, half afternoon.</td></tr>
+        <tr><td class="time-cell">Afternoon</td><td>Alpha Lipoic Acid (300–600mg)</td><td>Take with CoQ10 — they work synergistically.</td></tr>
+        <tr><td class="time-cell">Afternoon</td><td>Vitamin E (400–800 IU)</td><td>Egg quality and anti-inflammatory. Take with fat-containing snack.</td></tr>
+        <tr><td class="time-cell">Evening</td><td>Magnesium glycinate (200–400mg)</td><td>Shared with Rolando. Increase dose in luteal phase (Day 15–28).</td></tr>
+        <tr><td class="time-cell">Evening</td><td>Chasteberry / Vitex</td><td>Same time every evening without fail — consistency is critical for hormonal effect.</td></tr>
+        <tr><td class="time-cell">Evening</td><td>Melatonin (3mg)</td><td>30–60 min before consistent bedtime.</td></tr>
+        <tr><td class="time-cell">Before bed</td><td>Moringa tea</td><td>Anti-inflammatory. Bedtime routine anchor.</td></tr>
+        <tr><td class="time-cell" style="color:var(--gold);">Month 3 only</td><td>DHEA (25–75mg)</td><td>Physician clearance required first. Part of 90-day egg quality optimisation.</td></tr>
+        <tr><td class="time-cell" style="color:var(--soft);">Optional</td><td>Evening primrose oil</td><td>Take in follicular phase (Day 1–14 only) — stop at ovulation. Supports cervical fluid.</td></tr>
+        <tr><td class="time-cell" style="color:var(--soft);">Optional</td><td>Ashwagandha</td><td>Stress adaptogen. Can take in morning or evening. Note: may interact with thyroid medications if any are prescribed.</td></tr>
+        <tr><td class="time-cell" style="color:var(--soft);">Optional</td><td>Biotin</td><td>Hair, skin, nails. Morning with breakfast.</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3><span class="ico ico-s">📅</span> Stephanie — Cycle Phase Protocol</h3>
+      <ul>
+        <li><strong>Follicular (Day 1–14):</strong> More energy available — slightly more active movement. Evening primrose oil in this phase only. Good time to batch cook and meal prep.</li>
+        <li><strong>Luteal (Day 15–28):</strong> Honour lower energy. Increase magnesium dose. Stricter diet — no gluten, refined sugar, dairy. Start mefenamic acid 1–2 days before period if prescribed.</li>
+        <li><strong>During period:</strong> Rest is medicine. Strict diet only. Ginger and turmeric tea frequently. Skip NAC on period days. Heat therapy daily. Legs up the wall every evening.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="ico ico-s">🥚</span> 90-Day Egg Quality Timeline</h3>
+      <ul>
+        <li><strong>Month 1 — Foundation (Now):</strong> CoQ10, Omega-3, Vitamin D, Magnesium. Cut sugar, alcohol, processed food. Establish sleep routine. Daily gentle movement.</li>
+        <li><strong>Month 2 — Build:</strong> Add Myo-Inositol, NAC, Vitamin E, Melatonin, Alpha Lipoic Acid. Deepen stress management. Consider acupuncture if accessible in Antigua.</li>
+        <li><strong>Month 3 — Optimise:</strong> Add DHEA only after physician clearance. Maintain everything consistently. Full supplement protocol in place.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="disclaimer">This combined plan is informational. It does not replace medical guidance. Stephanie's conditions — endometriosis, scoliosis, sciatica, arthritis — and Rolando's lab findings (positive FIT, elevated T4) both require active physician supervision. All supplements should be reviewed by a doctor before starting.</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// FIREBASE CONFIG — Replace the values below with your own project config.
+// Steps:
+//   1. Go to https://console.firebase.google.com
+//   2. Create a project → Add a web app → copy the config object
+//   3. Go to Build → Realtime Database → Create database → "Start in test mode"
+//   4. Paste your values in the object below (replace every REPLACE_WITH_*)
+//   5. Push the updated file to GitHub — the banner will disappear automatically
+// ══════════════════════════════════════════════════════════════════════════
+var FIREBASE_CONFIG = {
+  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+  authDomain:        "REPLACE_WITH_YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL:       "https://REPLACE_WITH_YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket:     "REPLACE_WITH_YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "REPLACE_WITH_YOUR_SENDER_ID",
+  appId:             "REPLACE_WITH_YOUR_APP_ID"
+};
+
+var CONFIGURED = !FIREBASE_CONFIG.apiKey.startsWith('REPLACE');
+var groceryRef  = null;
+var isWriting   = false; // prevent echo-back loops
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ── APP ICON ─────────────────────────────────────────────────────────────
+  (function () {
+    var canvas = document.createElement('canvas');
+    canvas.width = 180; canvas.height = 180;
+    var ctx = canvas.getContext('2d');
+    var r = 36;
+    ctx.beginPath();
+    ctx.moveTo(r, 0); ctx.lineTo(180 - r, 0);
+    ctx.quadraticCurveTo(180, 0, 180, r);
+    ctx.lineTo(180, 180 - r);
+    ctx.quadraticCurveTo(180, 180, 180 - r, 180);
+    ctx.lineTo(r, 180);
+    ctx.quadraticCurveTo(0, 180, 0, 180 - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0, r, 0);
+    ctx.closePath();
+    var grad = ctx.createLinearGradient(0, 0, 180, 180);
+    grad.addColorStop(0,   '#1a6b3a');
+    grad.addColorStop(0.5, '#0f4a28');
+    grad.addColorStop(1,   '#7b3fa0');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.save();
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(90, 76, 52, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.fillStyle = 'rgba(255,255,255,0.95)';
+    ctx.font = 'bold 66px -apple-system, BlinkMacSystemFont, Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LH', 90, 82);
+    ctx.font = '500 20px -apple-system, BlinkMacSystemFont, Arial, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('HEALTH PLAN', 90, 140);
+    var link = document.getElementById('pwa-icon');
+    if (link) link.href = canvas.toDataURL('image/png');
+  })();
+
+  // ── FIREBASE INIT ─────────────────────────────────────────────────────────
+  var syncStatus = document.getElementById('sync-status');
+  var setupBanner = document.getElementById('setup-banner');
+
+  function setSyncStatus(ok, msg) {
+    syncStatus.className = 'sync-status ' + (ok ? 'sync-ok' : 'sync-err');
+    syncStatus.innerHTML = '<span class="sync-dot"></span> ' + msg;
+  }
+
+  if (CONFIGURED) {
+    setupBanner.classList.add('hidden');
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      var db = firebase.database();
+      groceryRef = db.ref('lewis-household/grocery');
+
+      // Real-time listener — updates ALL devices instantly
+      groceryRef.on('value', function (snapshot) {
+        if (isWriting) return; // skip our own writes
+        var state = snapshot.val() || {};
+        document.querySelectorAll('.g-item input[type=checkbox]').forEach(function (cb) {
+          var checked = !!state[cb.id];
+          cb.checked = checked;
+          cb.closest('.g-item').classList.toggle('checked', checked);
+        });
+        setSyncStatus(true, 'Synced across all devices ✓');
+      }, function (err) {
+        setSyncStatus(false, 'Sync error — check Firebase rules');
+        console.error('Firebase read error:', err);
+      });
+
+      setSyncStatus(true, 'Connecting…');
+    } catch (e) {
+      setSyncStatus(false, 'Firebase config error — check console');
+      console.error('Firebase init error:', e);
+    }
+  } else {
+    setSyncStatus(false, 'Not syncing — Firebase not configured yet');
+    loadLocalState();
+  }
+
+  // ── SAVE ──────────────────────────────────────────────────────────────────
+  function saveState() {
+    var state = {};
+    document.querySelectorAll('.g-item input[type=checkbox]').forEach(function (cb) {
+      state[cb.id] = cb.checked;
+    });
+    if (CONFIGURED && groceryRef) {
+      isWriting = true;
+      groceryRef.set(state).then(function () {
+        isWriting = false;
+        setSyncStatus(true, 'Synced across all devices ✓');
+      }).catch(function (err) {
+        isWriting = false;
+        setSyncStatus(false, 'Sync failed — check Firebase rules');
+        saveLocalFallback(state);
+      });
+    } else {
+      saveLocalFallback(state);
+    }
+  }
+
+  function saveLocalFallback(state) {
+    try { localStorage.setItem('lewis-health-grocery', JSON.stringify(state)); } catch(e) {}
+  }
+
+  function loadLocalState() {
+    var raw; try { raw = localStorage.getItem('lewis-health-grocery'); } catch(e) { return; }
+    if (!raw) return;
+    var state; try { state = JSON.parse(raw); } catch(e) { return; }
+    document.querySelectorAll('.g-item input[type=checkbox]').forEach(function (cb) {
+      if (state[cb.id]) { cb.checked = true; cb.closest('.g-item').classList.add('checked'); }
+    });
+  }
+
+  // ── MAIN TABS ─────────────────────────────────────────────────────────────
+  document.getElementById('mainNav').addEventListener('click', function (e) {
+    var btn = e.target.closest('.tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+    document.querySelectorAll('.tab-pane').forEach(function(p){ p.classList.remove('active'); });
+    btn.classList.add('active');
+    var pane = document.getElementById('tab-' + btn.dataset.tab);
+    if (pane) pane.classList.add('active');
+  });
+
+  // ── DAY TABS ──────────────────────────────────────────────────────────────
+  document.getElementById('dayNav').addEventListener('click', function (e) {
+    var btn = e.target.closest('.pill-btn');
+    if (!btn) return;
+    document.querySelectorAll('#dayNav .pill-btn').forEach(function(b){ b.classList.remove('day-active'); });
+    document.querySelectorAll('[data-daypanel]').forEach(function(p){ p.classList.remove('active'); });
+    btn.classList.add('day-active');
+    var dp = document.querySelector('[data-daypanel="' + btn.dataset.day + '"]');
+    if (dp) dp.classList.add('active');
+  });
+
+  // ── GROCERY CHECKBOXES ────────────────────────────────────────────────────
+  document.querySelectorAll('.g-item input[type=checkbox]').forEach(function (cb) {
+    cb.addEventListener('change', function () {
+      cb.closest('.g-item').classList.toggle('checked', cb.checked);
+      saveState();
+    });
+  });
+
+  // ── RESET ─────────────────────────────────────────────────────────────────
+  document.getElementById('resetBtn').addEventListener('click', function () {
+    document.querySelectorAll('.g-item input[type=checkbox]').forEach(function (cb) {
+      cb.checked = false;
+      cb.closest('.g-item').classList.remove('checked');
+    });
+    if (CONFIGURED && groceryRef) {
+      groceryRef.set({});
+    } else {
+      try { localStorage.removeItem('lewis-health-grocery'); } catch(e) {}
+    }
+    setSyncStatus(true, CONFIGURED ? 'List cleared — synced ✓' : 'List cleared');
+  });
+
+});
+</script>
+</body>
+</html>
